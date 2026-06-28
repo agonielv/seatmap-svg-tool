@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+import sys
 from typing import Any, Dict
 
 try:
@@ -29,11 +30,24 @@ def deep_update(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
             result[key] = value
     return result
 
+def resolve_resource_path(path: str) -> Path:
+    """Resolve a normal path or a PyInstaller bundled data file path."""
+    candidate = Path(path)
+    if candidate.exists():
+        return candidate
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        bundled = Path(bundle_root) / path
+        if bundled.exists():
+            return bundled
+    return candidate
+
 def load_config(path: str | None = None) -> Dict[str, Any]:
     if not path:
         return deepcopy(DEFAULT_CONFIG)
     if yaml is None:
         raise SystemExit("PyYAML is required to read config files. Install with: python -m pip install -r requirements.txt")
-    with Path(path).open("r", encoding="utf-8") as f:
+    config_path = resolve_resource_path(path)
+    with config_path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return deep_update(DEFAULT_CONFIG, data)

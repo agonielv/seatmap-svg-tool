@@ -147,22 +147,54 @@ rules:
 
 ## Windows 打包 exe
 
-双击或在命令行运行：
+Windows 用户可以在项目根目录双击，或在 CMD/PowerShell 中执行：
 
 ```bat
 scripts\build_windows.bat
 ```
 
-脚本会：
+脚本会自动完成以下步骤：
 
-1. 创建虚拟环境。
-2. 安装依赖。
-3. 运行测试。
-4. 使用 PyInstaller 打包。
-5. 输出 `dist\SeatmapSVGTool.exe`。
-6. 输出 `release\SeatmapSVGTool-windows-x64.zip`。
+1. 切换到项目根目录，因此无论双击脚本还是从项目根目录执行都可以使用。
+2. 创建 `.venv` 虚拟环境；优先尝试 `py -3.11`，失败后尝试 `py -3` 和 `python`。
+3. 安装 `requirements.txt`，并显式安装 `pytest`、`pyinstaller`。
+4. 运行 `python -m pytest`。
+5. 使用 PyInstaller 单文件模式打包 `seatmap_svg.py`。
+6. 使用 `--add-data "configs;configs"` 把默认配置目录一起打进 exe，确保 exe 可以读取 `configs/default.yaml`。
+7. 输出 `dist\SeatmapSVGTool.exe`。
+8. 额外生成 `release\SeatmapSVGTool-windows-x64.zip`，其中包含：
+   - `SeatmapSVGTool.exe`
+   - `configs\default.yaml`
+   - `README.md`
+   - `scripts\run_sample.bat`
+
+如果构建失败，脚本会打印错误并 `pause` 停留在窗口中，方便查看失败原因，不会直接闪退。
 
 如果当前非 Windows 环境无法直接生成 Windows exe，可把代码推送到 GitHub，使用 `.github/workflows/build-windows.yml` 在 `windows-latest` 上自动构建并上传 artifact。
+
+## Windows exe 使用说明
+
+打包成功后，可在项目根目录运行：
+
+```bat
+dist\SeatmapSVGTool.exe --config configs\default.yaml
+```
+
+也可以解压 `release\SeatmapSVGTool-windows-x64.zip` 后，在解压目录中运行：
+
+```bat
+SeatmapSVGTool.exe --config configs\default.yaml
+```
+
+压缩包中的 `scripts\run_sample.bat` 会优先调用同目录分发的 `SeatmapSVGTool.exe`，因此解压后也可以双击它生成示例输出。
+
+如需指定自己的 Excel 文件：
+
+```bat
+SeatmapSVGTool.exe --input "D:\data\歌剧院座位图.xlsx" --sheet 净版 --range A1:AX103 --output output\seatmap.svg --report output\report.json
+```
+
+建议把 `configs\default.yaml` 与 exe 一起分发，便于非技术用户直接修改 Excel 路径、sheet、扫描范围、座位尺寸、颜色规则和忽略范围。
 
 ## GitHub Actions
 
