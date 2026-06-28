@@ -59,6 +59,8 @@ def read_sheet(file: str, sheet: str | None, scan_range: str) -> SheetData:
     except ImportError as exc:
         raise SystemExit("openpyxl is required to read Excel files. Install with: python -m pip install -r requirements.txt") from exc
     wb = load_workbook(filename=file, data_only=True)
+    if sheet and sheet not in wb.sheetnames:
+        raise ValueError(f"sheet 不存在: {sheet}. 可用 sheet: {', '.join(wb.sheetnames)}")
     ws = wb[sheet] if sheet else wb.active
     min_col, min_row, max_col, max_row = range_boundaries(scan_range)
     merge_lookup = _merge_lookup(ws)

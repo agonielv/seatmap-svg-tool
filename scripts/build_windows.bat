@@ -71,7 +71,7 @@ if not exist "release" mkdir "release"
 if exist "release\package" rmdir /s /q "release\package"
 if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
 
-pyinstaller --clean --onefile --name "%APP_NAME%" --add-data "%PYINSTALLER_ADD_DATA%" seatmap_svg.py
+pyinstaller --clean --windowed --onefile --name "%APP_NAME%" --add-data "%PYINSTALLER_ADD_DATA%" seatmap_svg_gui.py
 if errorlevel 1 exit /b 1
 
 if not exist "%EXE_PATH%" (
@@ -81,11 +81,12 @@ if not exist "%EXE_PATH%" (
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference='Stop'; " ^
-  "New-Item -ItemType Directory -Force release\package\configs,release\package\scripts | Out-Null; " ^
+  "New-Item -ItemType Directory -Force release\package\configs,release\package\scripts,release\package\output | Out-Null; " ^
   "Copy-Item '%EXE_PATH%' 'release\package\SeatmapSVGTool.exe' -Force; " ^
   "Copy-Item 'configs\default.yaml' 'release\package\configs\default.yaml' -Force; " ^
   "Copy-Item 'README.md' 'release\package\README.md' -Force; " ^
   "Copy-Item 'scripts\run_sample.bat' 'release\package\scripts\run_sample.bat' -Force; " ^
+  "New-Item -ItemType File -Force release\package\output\.gitkeep | Out-Null; " ^
   "Compress-Archive -Path 'release\package\*' -DestinationPath '%ZIP_PATH%' -Force"
 if errorlevel 1 exit /b 1
 

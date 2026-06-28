@@ -15,7 +15,7 @@ if exist "SeatmapSVGTool.exe" (
   python seatmap_svg.py --config configs\default.yaml || goto :error
 )
 
-echo Generated output\seatmap.svg and output\report.json
+echo Done. If an exe was found, the GUI has been opened; otherwise output\seatmap.svg and output\report.json were generated.
 pause
 exit /b 0
 
