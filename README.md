@@ -1,0 +1,279 @@
+# Seatmap SVG Tool
+
+Seatmap SVG Tool 是一个用 Python 3.11+ 开发的“Excel 表格座位图自动生成 SVG 矢量座位图”工具。它可以读取剧院座位 Excel，按指定 sheet 和扫描范围识别普通座位、加座、不可用座位、区域标签、舞台/说明文字，并输出可在浏览器和矢量编辑软件中打开的 SVG，以及 JSON 统计报告。
+
+## 功能
+
+- 读取 `.xlsx`，无需安装 Microsoft Office。
+- 支持中文文件名、中文 sheet 名和中文标签。
+- 支持命令行参数和 YAML 配置文件。
+- 保留 Excel 行列空间关系，不压缩座位矩阵。
+- 输出 SVG：每个座位包含 `data-cell`、`data-seat`、`data-status`、`data-row-label`。
+- 输出 `report.json`：包含座位统计、忽略单元格、无法识别内容、填充色统计、合并单元格列表。
+- 提供 Windows 双击运行脚本、PyInstaller 打包脚本和 GitHub Actions Windows 构建工作流。
+
+
+## Windows GUI 图形界面使用说明
+
+打包后的 `SeatmapSVGTool.exe` 是图形界面版本。最终用户不需要安装 Python、openpyxl、PyYAML 或 PyInstaller。
+
+1. 解压 `release\SeatmapSVGTool-windows-x64.zip`。
+2. 双击 `SeatmapSVGTool.exe`。
+3. 点击“选择配置文件”可选择 `configs\default.yaml`；不选择时默认使用 `configs/default.yaml`。
+4. 点击“选择 Excel 文件”，选择 `.xlsx` 座位表。
+5. 程序会自动读取 sheet 列表，在下拉框中选择需要扫描的 sheet；默认选择第一个 sheet。
+6. 在“扫描范围”中填写 Excel 范围，例如 `A1:AX103`。默认值来自 `configs/default.yaml` 的 `input.range`。
+7. 点击“选择 SVG 输出位置”，指定 `seatmap.svg` 保存位置。
+8. 点击“选择报告输出位置”，指定 `report.json` 保存位置。
+9. 点击“开始生成”，界面底部日志会显示“正在读取 Excel”“正在解析座位”“正在生成 SVG”“正在生成报告”“完成”等状态。
+10. 成功后会弹窗显示 SVG 和报告路径，可点击“打开输出目录”或“打开 SVG 文件”。
+
+如果生成失败，请先查看界面底部日志框。常见原因包括：未选择 Excel 文件、Excel 文件不存在、sheet 名不存在、扫描范围格式错误、输出目录无写入权限、配置文件不存在或 YAML 格式错误。解析过程中发现无法识别的单元格不会导致失败，程序会继续生成 SVG，并在日志中提示到 JSON 报告查看详情。
+
+GUI 中填写的 Excel 文件、sheet、扫描范围、SVG 输出路径和 JSON 报告路径会覆盖 `configs/default.yaml`；座位尺寸、颜色、加座规则、不可用座位规则、忽略范围等仍从 YAML 配置读取。
+
+## 快速开始
+
+### 1. 安装依赖
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+### 2. 运行示例
+
+```bash
+python seatmap_svg.py --input samples/歌剧院座位图—加座版.xlsx --sheet 净版 --range A1:AX103 --output output/seatmap.svg --report output/report.json
+```
+
+或使用配置文件：
+
+```bash
+python seatmap_svg.py --config configs/default.yaml
+```
+
+生成文件：
+
+- `output/seatmap.svg`
+- `output/report.json`
+
+## Windows 用户如何直接运行
+
+双击：
+
+```text
+scripts\run_sample.bat
+```
+
+脚本会：
+
+1. 进入项目根目录。
+2. 创建 `.venv` 虚拟环境（如果不存在）。
+3. 安装 `requirements.txt`。
+4. 运行 `configs/default.yaml` 示例配置。
+5. 生成 `output\seatmap.svg` 和 `output\report.json`。
+
+## 命令行参数
+
+```bash
+python seatmap_svg.py \
+  --input samples/歌剧院座位图—加座版.xlsx \
+  --sheet 净版 \
+  --range A1:AX103 \
+  --output output/seatmap.svg \
+  --report output/report.json
+```
+
+参数说明：
+
+- `--config`：YAML 配置文件路径。
+- `--input`：Excel 文件路径。
+- `--sheet`：工作表名称；省略时使用配置或默认值。
+- `--range`：扫描范围，例如 `A1:AX103`。
+- `--output`：SVG 输出路径。
+- `--report`：JSON 报告输出路径。
+
+命令行参数会覆盖配置文件中的同名设置。
+
+## 配置文件
+
+默认配置位于 `configs/default.yaml`。常用配置如下：
+
+```yaml
+input:
+  file: samples/歌剧院座位图—加座版.xlsx
+  sheet: 净版
+  range: A1:AX103
+output:
+  svg: output/seatmap.svg
+  report: output/report.json
+seat:
+  regex: "^\\d+(?:\\+\\d+)?$"
+  width: 28
+  height: 20
+  radius: 4
+layout:
+  origin_x: 40
+  origin_y: 40
+  cell_width: 32
+  cell_height: 24
+ignore:
+  ranges:
+    - BB1:BF103
+```
+
+### 调整座位大小和间距
+
+修改：
+
+- `seat.width` / `seat.height`：座位矩形大小。
+- `layout.cell_width` / `layout.cell_height`：Excel 单元格映射到 SVG 的格距。
+- `layout.origin_x` / `layout.origin_y`：整体边距。
+
+### 排除右侧统计区
+
+在 `ignore.ranges` 添加 Excel 范围：
+
+```yaml
+ignore:
+  ranges:
+    - BB1:BF103
+    - A105:AX120
+```
+
+### 颜色识别
+
+程序会在报告的 `fill_color_counts` 中输出填充色键，例如：
+
+- `none`
+- `rgb:FF0000`
+- `theme:0`
+- `indexed:64`
+
+如果某种颜色表示不可用座位，可复制颜色键到：
+
+```yaml
+rules:
+  disabled_seat:
+    by_fill_keys:
+      - "theme:0"
+      - "rgb:4B4B4B"
+```
+
+## Windows 打包 exe
+
+Windows 用户可以在项目根目录双击，或在 CMD/PowerShell 中执行：
+
+```bat
+scripts\build_windows.bat
+```
+
+脚本会自动完成以下步骤：
+
+1. 切换到项目根目录，因此无论双击脚本还是从项目根目录执行都可以使用。
+2. 创建 `.venv` 虚拟环境；优先尝试 `py -3.11`，失败后尝试 `py -3` 和 `python`。
+3. 安装 `requirements.txt`，并显式安装 `pytest`、`pyinstaller`。
+4. 运行 `python -m pytest`。
+5. 使用 PyInstaller `--windowed --onefile` 模式打包 GUI 入口 `seatmap_svg_gui.py`。
+6. 使用 `--add-data "configs;configs"` 把默认配置目录一起打进 exe，确保 exe 可以读取 `configs/default.yaml`。
+7. 输出 `dist\SeatmapSVGTool.exe`。
+8. 额外生成 `release\SeatmapSVGTool-windows-x64.zip`，其中包含：
+   - `SeatmapSVGTool.exe`
+   - `configs\default.yaml`
+   - `README.md`
+   - 空 `output` 目录（含 `.gitkeep`）
+   - `scripts\run_sample.bat`
+
+如果构建失败，脚本会打印错误并 `pause` 停留在窗口中，方便查看失败原因，不会直接闪退。
+
+如果当前非 Windows 环境无法直接生成 Windows exe，可把代码推送到 GitHub，使用 `.github/workflows/build-windows.yml` 在 `windows-latest` 上自动构建并上传 artifact。
+
+## Windows exe 使用说明
+
+打包成功后，可在项目根目录双击，或在命令行运行：
+
+```bat
+dist\SeatmapSVGTool.exe
+```
+
+如需指定 GUI 启动时加载的配置文件：
+
+```bat
+dist\SeatmapSVGTool.exe --config configs\default.yaml
+```
+
+也可以解压 `release\SeatmapSVGTool-windows-x64.zip` 后，直接双击 `SeatmapSVGTool.exe` 打开 GUI。仍需命令行模式时，可使用源码入口：
+
+```bat
+python seatmap_svg.py --config configs\default.yaml
+```
+
+压缩包中的 `scripts\run_sample.bat` 会优先调用同目录分发的 `SeatmapSVGTool.exe` 打开 GUI；在源码目录中没有 exe 时则回退到 Python 示例生成流程。
+
+如需在命令行中指定自己的 Excel 文件，请使用源码 CLI 或自行打包 CLI 入口：
+
+```bat
+python seatmap_svg.py --input "D:\data\歌剧院座位图.xlsx" --sheet 净版 --range A1:AX103 --output output\seatmap.svg --report output\report.json
+```
+
+建议把 `configs\default.yaml` 与 exe 一起分发，便于非技术用户直接修改 Excel 路径、sheet、扫描范围、座位尺寸、颜色规则和忽略范围。
+
+## GitHub Actions
+
+工作流文件：`.github/workflows/build-windows.yml`。
+
+触发方式：
+
+- `push`
+- `pull_request`
+- 手动 `workflow_dispatch`
+
+产物：`SeatmapSVGTool-windows-x64.zip`。
+
+## 常见问题
+
+### 中文乱码怎么办？
+
+SVG 使用 UTF-8 写入，并在 CSS 中优先使用 `Microsoft YaHei`、`SimHei`。如果浏览器显示异常，请确认 SVG 文件以 UTF-8 保存，并在系统中安装常见中文字体。
+
+### Excel 颜色识别不准怎么办？
+
+Excel 颜色可能是 RGB、主题色或索引色。请先查看 `output/report.json` 中的 `fill_color_counts`，再把对应键加入 YAML 规则。主题色不会强行转换成 RGB，以避免不同工作簿主题导致误判。
+
+### 统计数量和人工统计不一致怎么办？
+
+先检查：
+
+1. `input.range` 是否覆盖了所有座位。
+2. `ignore.ranges` 是否误排除了座位区域。
+3. `seat.regex` 是否匹配你的座位号格式。
+4. `rules.disabled_seat.by_fill_keys` 是否配置了正确颜色。
+5. `unrecognized_non_empty_cells` 中是否有本应识别为座位的内容。
+
+### 如何排除右侧统计区？
+
+在 `configs/default.yaml` 的 `ignore.ranges` 中添加统计区范围，例如 `BB1:BF103`。
+
+### 如何调整座位大小和间距？
+
+调整 `seat.width`、`seat.height`、`layout.cell_width`、`layout.cell_height`。座位矩形会在对应 Excel 单元格映射区域内居中。
+
+## 已知限制
+
+- 第一版以 Excel 单元格网格为布局基础，不会自动拟合已有原始 SVG 底图。
+- 主题色只输出 `theme:N` 调试键，不自动按工作簿主题转换为 RGB。
+- 统计表自动比对只输出程序统计和可疑文本，不保证理解所有人工统计表格式。
+
+## 下一步：支持原始 SVG 底图 + Excel 座位图叠加
+
+后续可增加：
+
+1. `background_svg` 配置项，把原始 SVG 作为底图引入。
+2. SVG 坐标校准参数，如缩放、旋转、偏移。
+3. 选择 Excel 中若干锚点座位和底图锚点进行仿射变换。
+4. 输出分层 SVG：`background`、`seats`、`labels` 分组，方便编辑。
